@@ -42,19 +42,20 @@
     }
     .badge {
       position: absolute;
-      top: 5px;
-      right: 10px;
+      top: -5px;
+      right: -5px;
       background-color: red;
       color: white;
       border-radius: 50%;
-      padding: 2px 6px;
+      padding: 4px 7px;
       font-size: 12px;
       display: none;
+      z-index: 10;
     }
   </style>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-app.js";
-    import { getFirestore, collection, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-firestore.js";// Firebase initialization
+    import { getFirestore, collection, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-firestore.js";// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyCK4HqGSjYRT2jFNhAvniSWIzhDvEb2qAQ",
   authDomain: "asa-en-ligne.firebaseapp.com",
@@ -67,45 +68,57 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Notification badge logic
-let badgeCount = 0;
-const badgeEl = document.createElement('span');
-badgeEl.id = 'notif-badge';
-badgeEl.className = 'badge';
-badgeEl.textContent = badgeCount;
 document.addEventListener('DOMContentLoaded', () => {
   const btn = document.querySelector('a.service-client-button');
+  if (!btn) return console.error('Button not found');
+
+  // Create badge element
+  const badgeEl = document.createElement('span');
+  badgeEl.className = 'badge';
+  badgeEl.textContent = '0';
   btn.appendChild(badgeEl);
+
+  let badgeCount = 0;
+  let firstLoad = true;
+  let lastTimestamp = Date.now();
+
+  // Reset badge on click
   btn.addEventListener('click', () => {
     badgeCount = 0;
     updateBadge();
   });
 
-  // Listen for new admin messages
+  // Firestore listener
   const msgsRef = collection(db, 'messages');
   const q = query(
     msgsRef,
     where('from', '==', 'admin'),
     orderBy('timestamp', 'desc')
   );
-  let lastTimestamp = Date.now();
+
   onSnapshot(q, snapshot => {
     snapshot.docChanges().forEach(change => {
       if (change.type === 'added') {
         const msg = change.doc.data();
-        if (msg.timestamp && msg.timestamp.toMillis() > lastTimestamp) {
+        if (!msg.timestamp) return;
+        const t = msg.timestamp.toMillis();
+        if (firstLoad) {
+          // On first load, set lastTimestamp but do not notify
+          lastTimestamp = t;
+        } else if (t > lastTimestamp) {
           badgeCount++;
           updateBadge();
-          lastTimestamp = msg.timestamp.toMillis();
+          lastTimestamp = t;
         }
       }
     });
+    if (firstLoad) firstLoad = false;
   }, err => console.error('Firestore listen error:', err));
 
   function updateBadge() {
     if (badgeCount > 0) {
       badgeEl.textContent = badgeCount;
-      badgeEl.style.display = 'inline';
+      badgeEl.style.display = 'block';
     } else {
       badgeEl.style.display = 'none';
     }
@@ -124,8 +137,8 @@ document.addEventListener('DOMContentLoaded', () => {
        title="Mifandraisa amin'ny Service Client">
       <img src="https://cdn-icons-png.flaticon.com/512/219/219983.png" alt="Client Icon">
       <span>Service Client</span>
-      <!-- Badge appended dynamically -->
+      <!-- Notification badge -->
     </a>
   </div>
 </body>
-  </html>
+</html>
