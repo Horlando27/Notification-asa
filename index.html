@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="mg">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bouton Service Client</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f2f2f2;
+      color: #333;
+      line-height: 1.6;
+    }
+    .container {
+      width: 80%;
+      margin: 40px auto;
+      padding: 20px;
+      background-color: #fff;
+      border: 1px solid #ddd;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    a.service-client-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 50px;
+      background-color: #00698f;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 5px;
+      margin-top: 20px;
+    }
+    a.service-client-button img {
+      width: 24px;
+      height: 24px;
+      margin-right: 8px;
+    }
+    a.service-client-button:hover {
+      background-color: #00567f;
+    }
+  </style>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-app.js";
+    import { getFirestore, collection, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-firestore.js";
+
+    // ——— 1. Firebase init ———
+    const firebaseConfig = {
+      apiKey: "AIzaSyCK4HqGSjYRT2jFNhAvniSWIzhDvEb2qAQ",
+      authDomain: "asa-en-ligne.firebaseapp.com",
+      projectId: "asa-en-ligne",
+      storageBucket: "asa-en-ligne.appspot.com",
+      messagingSenderId: "58359363245",
+      appId: "1:58359363245:web:ca5969776ce9cd86aef824",
+      measurementId: "G-MRVHVWPV71"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // ——— 2. Mangataka alalana fampandrenesana ———
+    async function ensureNotificationPermission() {
+      if (!('Notification' in window)) {
+        alert("Tsy manohana Web Notifications ity navigateur ity.");
+        return false;
+      }
+      if (Notification.permission === 'default') {
+        const perm = await Notification.requestPermission();
+        return perm === 'granted';
+      }
+      return Notification.permission === 'granted';
+    }
+
+    // ——— 3. Mihaino hafatra admin ———
+    (async function() {
+      const ok = await ensureNotificationPermission();
+      if (!ok) {
+        console.warn("Notification permission tsy azo");
+        return;
+      }
+
+      // Initialize lastTimestamp ho ankehitriny (hamela ireo hafatra efa teo)
+      let lastTimestamp = Date.now();
+
+      const msgsRef = collection(db, 'messages');
+      const q = query(
+        msgsRef,
+        where('from', '==', 'admin'),
+        orderBy('timestamp', 'desc')
+      );
+
+      onSnapshot(q, snapshot => {
+        console.log("Snapshot received:", snapshot.size, "docs");
+        snapshot.docChanges().forEach(change => {
+          if (change.type === 'added') {
+            const msg = change.doc.data();
+            if (!msg.timestamp) {
+              console.warn("Message tsy misy timestamp:", change.doc.id);
+              return;
+            }
+            const t = msg.timestamp.toMillis();
+            console.log("New admin msg at", new Date(t), "content:", msg.text);
+            if (t > lastTimestamp) {
+              lastTimestamp = t;
+              showNotification(msg.text);
+            }
+          }
+        });
+      }, err => {
+        console.error("Firestore listen error:", err);
+      });
+    })();
+
+    // ——— 4. Mampiseho notification ———
+    function showNotification(body) {
+      new Notification("Service Client – Hafatra vaovao", {
+        body,
+        icon: "https://cdn-icons-png.flaticon.com/512/219/219983.png"
+      });
+    }
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>Service Client</h1>
+    <p>Tsindrio eto ambany raha te-hiditra amin'ny Service Client ianao:</p>
+    <a href="https://service-client-asa-en-ligne-site-we.vercel.app/"
+       class="service-client-button"
+       target="_blank"
+       title="Mifandraisa amin'ny Service Client">
+      <img src="https://cdn-icons-png.flaticon.com/512/219/219983.png" alt="Client Icon">
+      <span>Service Client</span>
+    </a>
+  </div>
+</body>
+</html>
