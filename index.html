@@ -30,7 +30,6 @@
       text-decoration: none;
       border-radius: 5px;
       margin-top: 20px;
-      position: relative;
     }
     a.service-client-button img {
       width: 24px;
@@ -40,17 +39,45 @@
     a.service-client-button:hover {
       background-color: #00567f;
     }
-    .badge {
-      position: absolute;
-      top: -5px;
-      right: -5px;
-      background-color: red;
-      color: white;
-      border-radius: 50%;
-      padding: 4px 7px;
-      font-size: 12px;
+    /* Modal */
+    .modal-overlay {
       display: none;
-      z-index: 10;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .modal h2 {
+      margin-top: 0;
+      color: #00698f;
+    }
+    .modal p {
+      margin: 1em 0;
+    }
+    .modal button {
+      margin: 0.5em;
+      padding: 0.5em 1em;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background: #00698f;
+      color: #fff;
+    }
+    .modal button:hover {
+      background: #00567f;
     }
   </style>
   <script type="module">
@@ -69,33 +96,17 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 document.addEventListener('DOMContentLoaded', () => {
-  const btn = document.querySelector('a.service-client-button');
-  if (!btn) return console.error('Button not found');
+  const modalOverlay = document.getElementById('modal-overlay');
+  const modalText = document.getElementById('modal-text');
+  const openBtn = document.getElementById('modal-open');
+  const closeBtn = document.getElementById('modal-close');
 
-  // Create badge element
-  const badgeEl = document.createElement('span');
-  badgeEl.className = 'badge';
-  badgeEl.textContent = '0';
-  btn.appendChild(badgeEl);
-
-  let badgeCount = 0;
   let firstLoad = true;
   let lastTimestamp = Date.now();
 
-  // Reset badge on click
-  btn.addEventListener('click', () => {
-    badgeCount = 0;
-    updateBadge();
-  });
-
-  // Firestore listener
+  // Listen for admin messages
   const msgsRef = collection(db, 'messages');
-  const q = query(
-    msgsRef,
-    where('from', '==', 'admin'),
-    orderBy('timestamp', 'desc')
-  );
-
+  const q = query(msgsRef, where('from', '==', 'admin'), orderBy('timestamp', 'desc'));
   onSnapshot(q, snapshot => {
     snapshot.docChanges().forEach(change => {
       if (change.type === 'added') {
@@ -103,26 +114,28 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!msg.timestamp) return;
         const t = msg.timestamp.toMillis();
         if (firstLoad) {
-          // On first load, set lastTimestamp but do not notify
           lastTimestamp = t;
         } else if (t > lastTimestamp) {
-          badgeCount++;
-          updateBadge();
           lastTimestamp = t;
+          // Show modal with message
+          modalText.textContent = msg.text;
+          modalOverlay.style.display = 'flex';
         }
       }
     });
     if (firstLoad) firstLoad = false;
-  }, err => console.error('Firestore listen error:', err));
+  });
 
-  function updateBadge() {
-    if (badgeCount > 0) {
-      badgeEl.textContent = badgeCount;
-      badgeEl.style.display = 'block';
-    } else {
-      badgeEl.style.display = 'none';
-    }
-  }
+  // Open button -> navigate to service client interface
+  openBtn.addEventListener('click', () => {
+    window.open('https://service-client-asa-en-ligne-site-we.vercel.app/', '_blank');
+    modalOverlay.style.display = 'none';
+  });
+
+  // Close/dismiss
+  closeBtn.addEventListener('click', () => {
+    modalOverlay.style.display = 'none';
+  });
 });
 
   </script>
@@ -131,14 +144,17 @@ document.addEventListener('DOMContentLoaded', () => {
   <div class="container">
     <h1>Service Client</h1>
     <p>Tsindrio eto ambany raha te-hiditra amin'ny Service Client ianao:</p>
-    <a href="https://service-client-asa-en-ligne-site-we.vercel.app/"
-       class="service-client-button"
-       target="_blank"
-       title="Mifandraisa amin'ny Service Client">
+    <a href="https://service-client-asa-en-ligne-site-we.vercel.app/" class="service-client-button" target="_blank">
       <img src="https://cdn-icons-png.flaticon.com/512/219/219983.png" alt="Client Icon">
       <span>Service Client</span>
-      <!-- Notification badge -->
     </a>
+  </div>  <!-- Modal -->  <div id="modal-overlay" class="modal-overlay">
+    <div class="modal">
+      <h2>Hafatra Vaovao</h2>
+      <p id="modal-text"></p>
+      <button id="modal-open">Ouvrir</button>
+      <button id="modal-close">Fermer</button>
+    </div>
   </div>
 </body>
 </html>
