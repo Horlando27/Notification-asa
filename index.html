@@ -4,157 +4,62 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bouton Service Client</title>
   <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f2f2f2;
-      color: #333;
-      line-height: 1.6;
-    }
-    .container {
-      width: 80%;
-      margin: 40px auto;
-      padding: 20px;
-      background-color: #fff;
-      border: 1px solid #ddd;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      position: relative;
-    }
-    a.service-client-button {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      height: 50px;
-      background-color: #00698f;
-      color: #fff;
-      text-decoration: none;
-      border-radius: 5px;
-      margin-top: 20px;
-    }
-    a.service-client-button img {
-      width: 24px;
-      height: 24px;
-      margin-right: 8px;
-    }
-    a.service-client-button:hover {
-      background-color: #00567f;
-    }
-    /* Modal */
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.5);
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-    .modal {
-      background: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      max-width: 400px;
-      text-align: center;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    }
-    .modal h2 {
-      margin-top: 0;
-      color: #00698f;
-    }
-    .modal p {
-      margin: 1em 0;
-    }
-    .modal button {
-      margin: 0.5em;
-      padding: 0.5em 1em;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      background: #00698f;
-      color: #fff;
-    }
-    .modal button:hover {
-      background: #00567f;
-    }
+    body { font-family: 'Segoe UI', sans-serif; margin:0; padding:0; background-color: #f2f2f2; color: #333; line-height:1.6; }
+    .container { width:80%; margin:80px auto 40px; padding:20px; background:#fff; border:1px solid #ddd; box-shadow:0 0 10px rgba(0,0,0,0.1); }
+    a.service-client-button { display:flex; align-items:center; justify-content:center; width:100%; height:50px; background:#00698f; color:#fff; text-decoration:none; border-radius:5px; margin-top:20px; }
+    a.service-client-button img { width:24px; height:24px; margin-right:8px; }
+    a.service-client-button:hover { background:#00567f; }
+    /* Banner */
+    .banner { display:none; position:fixed; top:0; left:0; width:100%; background:#ffeb3b; color:#000; padding:10px; text-align:center; font-weight:bold; box-shadow:0 2px 5px rgba(0,0,0,0.2); z-index:1000; }
+    .banner button { margin-left:15px; padding:5px 10px; background:#00698f; color:#fff; border:none; border-radius:4px; cursor:pointer; }
+    .banner button:hover { background:#00567f; }
   </style>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-app.js";
     import { getFirestore, collection, query, where, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-firestore.js";// Firebase config
-const firebaseConfig = {
-  apiKey: "AIzaSyCK4HqGSjYRT2jFNhAvniSWIzhDvEb2qAQ",
-  authDomain: "asa-en-ligne.firebaseapp.com",
-  projectId: "asa-en-ligne",
-  storageBucket: "asa-en-ligne.appspot.com",
-  messagingSenderId: "58359363245",
-  appId: "1:58359363245:web:ca5969776ce9cd86aef824",
-  measurementId: "G-MRVHVWPV71"
-};
+const firebaseConfig = { apiKey:"AIzaSyCK4HqGSjYRT2jFNhAvniSWIzhDvEb2qAQ", authDomain:"asa-en-ligne.firebaseapp.com", projectId:"asa-en-ligne", storageBucket:"asa-en-ligne.appspot.com", messagingSenderId:"58359363245", appId:"1:58359363245:web:ca5969776ce9cd86aef824", measurementId:"G-MRVHVWPV71" };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 document.addEventListener('DOMContentLoaded', () => {
-  const modalOverlay = document.getElementById('modal-overlay');
-  const modalText = document.getElementById('modal-text');
-  const openBtn = document.getElementById('modal-open');
-  const closeBtn = document.getElementById('modal-close');
+  const banner = document.getElementById('msg-banner');
+  const openBtn = document.getElementById('banner-open');
 
   let firstLoad = true;
-  let lastTimestamp = Date.now();
 
-  // Listen for admin messages
+  // Firestore listener
   const msgsRef = collection(db, 'messages');
-  const q = query(msgsRef, where('from', '==', 'admin'), orderBy('timestamp', 'desc'));
+  const q = query(msgsRef, where('from','==','admin'), orderBy('timestamp','desc'));
   onSnapshot(q, snapshot => {
+    if (firstLoad) { firstLoad = false; return; }
     snapshot.docChanges().forEach(change => {
       if (change.type === 'added') {
-        const msg = change.doc.data();
-        if (!msg.timestamp) return;
-        const t = msg.timestamp.toMillis();
-        if (firstLoad) {
-          lastTimestamp = t;
-        } else if (t > lastTimestamp) {
-          lastTimestamp = t;
-          // Show modal with message
-          modalText.textContent = msg.text;
-          modalOverlay.style.display = 'flex';
-        }
+        // show banner
+        banner.style.display = 'block';
       }
     });
-    if (firstLoad) firstLoad = false;
-  });
+  }, err => console.error('Firestore listen error:', err));
 
-  // Open button -> navigate to service client interface
+  // Open button
   openBtn.addEventListener('click', () => {
     window.open('https://service-client-asa-en-ligne-site-we.vercel.app/', '_blank');
-    modalOverlay.style.display = 'none';
-  });
-
-  // Close/dismiss
-  closeBtn.addEventListener('click', () => {
-    modalOverlay.style.display = 'none';
+    banner.style.display = 'none';
   });
 });
 
   </script>
 </head>
 <body>
-  <div class="container">
+  <!-- Notification banner -->
+  <div id="msg-banner" class="banner">
+    Vous avez un nouveau message.
+    <button id="banner-open">Ouvrir</button>
+  </div>  <div class="container">
     <h1>Service Client</h1>
     <p>Tsindrio eto ambany raha te-hiditra amin'ny Service Client ianao:</p>
     <a href="https://service-client-asa-en-ligne-site-we.vercel.app/" class="service-client-button" target="_blank">
-      <img src="https://cdn-icons-png.flaticon.com/512/219/219983.png" alt="Client Icon">
-      <span>Service Client</span>
+      <img src="https://cdn-icons-png.flaticon.com/512/219/219983.png" alt="Client Icon"><span>Service Client</span>
     </a>
-  </div>  <!-- Modal -->  <div id="modal-overlay" class="modal-overlay">
-    <div class="modal">
-      <h2>Hafatra Vaovao</h2>
-      <p id="modal-text"></p>
-      <button id="modal-open">Ouvrir</button>
-      <button id="modal-close">Fermer</button>
-    </div>
   </div>
 </body>
 </html>
